@@ -17,30 +17,36 @@ export type Database = {
       answers: {
         Row: {
           answer_id: string | null
+          content: string | null
           created_at: string
           downvote: number | null
           id: number
           question_id: string | null
           upvote: number | null
           user_id: string | null
+          vote_count: number | null
         }
         Insert: {
           answer_id?: string | null
+          content?: string | null
           created_at?: string
           downvote?: number | null
           id?: number
           question_id?: string | null
           upvote?: number | null
           user_id?: string | null
+          vote_count?: number | null
         }
         Update: {
           answer_id?: string | null
+          content?: string | null
           created_at?: string
           downvote?: number | null
           id?: number
           question_id?: string | null
           upvote?: number | null
           user_id?: string | null
+          vote_count?: number | null
         }
         Relationships: []
       }
@@ -67,30 +73,78 @@ export type Database = {
       }
       questions: {
         Row: {
+          answer_count: number | null
           created_at: string | null
           description: string | null
           question_id: string
           question_tag: Json | null
           title: string | null
           user_id: string
+          vote_count: number | null
         }
         Insert: {
+          answer_count?: number | null
           created_at?: string | null
           description?: string | null
           question_id?: string
           question_tag?: Json | null
           title?: string | null
           user_id?: string
+          vote_count?: number | null
         }
         Update: {
+          answer_count?: number | null
           created_at?: string | null
           description?: string | null
           question_id?: string
           question_tag?: Json | null
           title?: string | null
           user_id?: string
+          vote_count?: number | null
         }
         Relationships: []
+      }
+      user_votes: {
+        Row: {
+          answer_id: string | null
+          created_at: string | null
+          id: string
+          question_id: string | null
+          user_id: string | null
+          vote_type: string | null
+        }
+        Insert: {
+          answer_id?: string | null
+          created_at?: string | null
+          id?: string
+          question_id?: string | null
+          user_id?: string | null
+          vote_type?: string | null
+        }
+        Update: {
+          answer_id?: string | null
+          created_at?: string | null
+          id?: string
+          question_id?: string | null
+          user_id?: string | null
+          vote_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_votes_answer_id_fkey"
+            columns: ["answer_id"]
+            isOneToOne: false
+            referencedRelation: "answers"
+            referencedColumns: ["answer_id"]
+          },
+          {
+            foreignKeyName: "user_votes_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["question_id"]
+          },
+        ]
       }
     }
     Views: {
