@@ -9,7 +9,7 @@ interface LayoutProps {
 const Layout = ({ children, onNavigate }: LayoutProps) => {
   return (
     <div className="min-h-screen bg-background">
-      <Header onNavigate={onNavigate} />
+      <Header />
       <main>{children}</main>
     </div>
   );

@@ -1,73 +1,25 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Filter, TrendingUp, Clock, Users } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import QuestionCard from "@/components/QuestionCard";
+import Layout from "@/components/Layout";
 
-// Mock data
-const mockQuestions = [
-  {
-    id: "1",
-    title: "How to use React hooks effectively in a large application?",
-    description: "I'm working on a large React application and I'm struggling with state management using hooks. What are the best practices for organizing hooks in a complex component hierarchy?",
-    author: "john_dev",
-    createdAt: "2 hours ago",
-    votes: 15,
-    answers: 3,
-    tags: ["React", "Hooks", "JavaScript"],
-    hasAcceptedAnswer: true,
-    userVote: null
-  },
-  {
-    id: "2",
-    title: "Best practices for TypeScript with React components",
-    description: "I'm new to TypeScript and want to know the best way to type React components, props, and state. What are the common patterns?",
-    author: "sarah_codes",
-    createdAt: "4 hours ago",
-    votes: 8,
-    answers: 2,
-    tags: ["TypeScript", "React", "Frontend"],
-    hasAcceptedAnswer: false,
-    userVote: null
-  },
-  {
-    id: "3",
-    title: "How to optimize performance in Next.js applications?",
-    description: "My Next.js app is getting slower as it grows. What are the key optimization techniques I should implement?",
-    author: "mike_web",
-    createdAt: "1 day ago",
-    votes: 23,
-    answers: 7,
-    tags: ["Next.js", "Performance", "Optimization"],
-    hasAcceptedAnswer: true,
-    userVote: "up" as const
-  },
-  {
-    id: "4",
-    title: "Understanding CSS Grid vs Flexbox - when to use which?",
-    description: "I'm often confused about when to use CSS Grid and when to use Flexbox. Can someone explain the key differences and use cases?",
-    author: "anna_designer",
-    createdAt: "2 days ago",
-    votes: 12,
-    answers: 5,
-    tags: ["CSS", "Grid", "Flexbox", "Layout"],
-    hasAcceptedAnswer: false,
-    userVote: null
-  },
-  {
-    id: "5",
-    title: "JWT authentication in Node.js - security best practices",
-    description: "I'm implementing JWT authentication in my Node.js API. What are the security considerations and best practices I should follow?",
-    author: "dev_security",
-    createdAt: "3 days ago",
-    votes: 19,
-    answers: 4,
-    tags: ["Node.js", "JWT", "Security", "Authentication"],
-    hasAcceptedAnswer: true,
-    userVote: null
-  }
-];
+interface Question {
+  question_id: string;
+  title: string;
+  description: string;
+  question_tag: any;
+  created_at: string;
+  user_id: string;
+  vote_count: number;
+  answer_count: number;
+}
 
 const popularTags = [
   "React", "JavaScript", "TypeScript", "Node.js", "CSS", "HTML", 
@@ -75,27 +27,75 @@ const popularTags = [
 ];
 
 const Questions = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState("newest");
   const [filterTag, setFilterTag] = useState<string>("");
 
-  const filteredQuestions = mockQuestions.filter(question => 
-    !filterTag || question.tags.some(tag => tag.toLowerCase().includes(filterTag.toLowerCase()))
-  );
+  useEffect(() => {
+    fetchQuestions();
+  }, []);
+
+  const fetchQuestions = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('questions')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setQuestions(data || []);
+    } catch (error) {
+      console.error('Error fetching questions:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load questions",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredQuestions = questions.filter(question => {
+    if (!filterTag) return true;
+    const tags = Array.isArray(question.question_tag) ? question.question_tag : [];
+    return tags.some((tag: string) => tag.toLowerCase().includes(filterTag.toLowerCase()));
+  });
 
   const sortedQuestions = [...filteredQuestions].sort((a, b) => {
     switch (sortBy) {
       case "votes":
-        return b.votes - a.votes;
+        return (b.vote_count || 0) - (a.vote_count || 0);
       case "answers":
-        return b.answers - a.answers;
+        return (b.answer_count || 0) - (a.answer_count || 0);
       case "newest":
       default:
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     }
   });
 
+  if (loading) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-6">
+          <div className="animate-pulse space-y-4">
+            <div className="h-8 bg-muted rounded w-1/3"></div>
+            <div className="h-4 bg-muted rounded w-1/4"></div>
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-32 bg-muted rounded"></div>
+            ))}
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
-    <div className="container mx-auto px-4 py-6">
+    <Layout>
+      <div className="container mx-auto px-4 py-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
@@ -160,9 +160,20 @@ const Questions = () => {
           <div className="space-y-4">
             {sortedQuestions.map((question) => (
               <QuestionCard 
-                key={question.id} 
-                question={question}
-                onClick={() => console.log(`Navigate to question ${question.id}`)}
+                key={question.question_id} 
+                question={{
+                  id: question.question_id,
+                  title: question.title,
+                  description: question.description,
+                  author: question.user_id.slice(0, 8),
+                  createdAt: new Date(question.created_at).toLocaleDateString(),
+                  votes: question.vote_count || 0,
+                  answers: question.answer_count || 0,
+                  tags: Array.isArray(question.question_tag) ? question.question_tag : [],
+                  hasAcceptedAnswer: false,
+                  userVote: null
+                }}
+                onClick={() => window.location.href = `/questions/${question.question_id}`}
               />
             ))}
           </div>
@@ -222,7 +233,8 @@ const Questions = () => {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </Layout>
   );
 };
 

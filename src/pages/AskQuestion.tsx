@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { X, Plus, HelpCircle } from "lucide-react";
+import { X, Plus, HelpCircle, ArrowLeft } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,14 +9,34 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import RichTextEditor from "@/components/RichTextEditor";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import Layout from "@/components/Layout";
 
 const AskQuestion = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+
+  // Redirect if not authenticated
+  if (!user) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-16 text-center">
+          <h1 className="text-2xl font-bold mb-4">Login Required</h1>
+          <p className="text-muted-foreground mb-6">You must be logged in to ask a question.</p>
+          <Link to="/auth">
+            <Button>Login</Button>
+          </Link>
+        </div>
+      </Layout>
+    );
+  }
 
   const popularTags = [
     "React", "JavaScript", "TypeScript", "Node.js", "CSS", "HTML", 
@@ -41,24 +62,34 @@ const AskQuestion = () => {
     }
   };
 
-  // Dummy server action for submitting question
+  // Submit question to Supabase
   const submitQuestion = async () => {
     setIsSubmitting(true);
     try {
-      // Simulate server action
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const { error } = await supabase
+        .from('questions')
+        .insert({
+          title,
+          description,
+          question_tag: tags,
+          user_id: user.id,
+        });
+
+      if (error) throw error;
       
       toast({
         title: "Question Posted!",
         description: "Your question has been successfully posted to the community.",
       });
 
-      // Reset form
+      // Reset form and navigate
       setTitle("");
       setDescription("");
       setTags([]);
       setTagInput("");
+      navigate('/questions');
     } catch (error) {
+      console.error('Error posting question:', error);
       toast({
         title: "Error",
         description: "Failed to post question. Please try again.",
@@ -72,7 +103,12 @@ const AskQuestion = () => {
   const isValid = title.length >= 10 && description.length >= 30 && tags.length > 0;
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-4xl">
+    <Layout>
+      <div className="container mx-auto px-4 py-6 max-w-4xl">
+        <Link to="/questions" className="inline-flex items-center text-muted-foreground hover:text-foreground mb-6">
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Questions
+        </Link>
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-foreground mb-2">Ask a Question</h1>
         <p className="text-muted-foreground">
@@ -284,7 +320,8 @@ const AskQuestion = () => {
           </Alert>
         </div>
       </div>
-    </div>
+      </div>
+    </Layout>
   );
 };
 
